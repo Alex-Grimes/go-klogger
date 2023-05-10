@@ -1,6 +1,8 @@
 package keylogger
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -164,4 +166,29 @@ func (k *Keylogger) read() (*InputEvent, error) {
 		return nil, nil
 	}
 	return k.eventFromBuffer(buffer)
+}
+
+func (k *Keylogger) write(event InputEvent) error {
+	return binary.Write(k.file, binary.LittleEndian, event)
+}
+
+func (k *Keylogger) syn() error {
+	return binary.Write(k.file, binary.LittleEndian, InputEvent{
+		Type:  EvSyn,
+		Code:  0,
+		Value: 0,
+	})
+}
+
+func (k *Keylogger) eventFromBuffer(buffer []byte) (*InputEvent, error) {
+	event := &InputEvent{}
+	err := binary.Read(bytes.NewBuffer(buffer), binary.LittleEndian, event)
+	return event, err
+}
+
+func (k *Keylogger) Close() error {
+	if k.file == nil {
+		return nil
+	}
+	return k.file.Close()
 }
