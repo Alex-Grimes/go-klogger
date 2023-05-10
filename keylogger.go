@@ -129,6 +129,31 @@ func (k *Keylogger) Write(direction KeyEvent, key string) error {
 	return k.syn()
 }
 
+func (k *KeyLogger) WriteOnce(key string) error {
+	key = strings.ToUpper(key)
+	code := uint16(0)
+	for c, k := range keyCodeMap {
+		if k == key {
+			code = c
+		}
+	}
+	if code == 0 {
+		return fmt.Errorf("%s key not found in key code map", key)
+	}
+
+	for _, i := range []int32{int32(KeyPress), int32(KeyRelease)} {
+		err := k.write(InputEvent{
+			Type:  EvKey,
+			Code:  code,
+			Value: i,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return k.syn()
+}
+
 func (k *Keylogger) read() (*InputEvent, error) {
 	buffer := make([]byte, eventsize)
 	n, err := k.file.Read(buffer)
