@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"syscall"
 )
 
 // Keylogger struct
@@ -83,4 +84,59 @@ func FindAllKeyboardDevices() []string {
 		}
 	}
 	return valid
+}
+
+func (k *Keylogger) IsRoot() bool {
+	return syscall.Getuid() == 0 && syscall.Geteuid() == 0
+}
+
+func (k *Keylogger) Read() chan InputEvent {
+	event := make(chan InputEvent)
+	go func(event chan InputEvent) {
+		for {
+			e, err := k.read()
+			if err != nil {
+				close(event)
+				break
+			}
+			if e != nil {
+				event <- *e
+			}
+		}
+	}(event)
+	return event
+}
+
+func (k *Keylogger) Write(direction KeyEvent, key string) error {
+	key = strings.ToUpper(key)
+	code := uint16(0)
+	for c, k := range keyCodeMap {
+		if k == key {
+			code = c
+		}
+	}
+	if code == 0 {
+		return fmt.Errorf("Key %s not found", key)
+	}
+	err := k.write(InputEvent{
+		Type:  EvKey,
+		Code:  code,
+		Value: int32(direction),
+	})
+	if err != nil {
+		return err
+	}
+	return k.syn()
+}
+
+func (k *Keylogger) read() (*InputEvent, error) {
+	buffer := make([]byte, eventsize)
+	n, err := k.file.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+	if n <= 0 {
+		return nil, nil
+	}
+	return k.eventFromBuffer(buffer)
 }
