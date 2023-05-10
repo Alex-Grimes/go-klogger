@@ -57,3 +57,30 @@ func FindKeyboardDevice() string {
 	}
 	return ""
 }
+
+func FindAllKeyboardDevices() []string {
+	path := "/sys/class/input/event%d/device/name"
+	resolved := "/dev/input/event%d"
+
+	valid := make([]string, 0)
+
+	for i := 0; i < 255; i++ {
+		buff, err := ioutil.ReadFile(fmt.Sprintf(path, i))
+
+		if os.IsNotExist(err) {
+			break
+		}
+		if err != nil {
+			continue
+		}
+
+		deviceName := strings.ToLower(string(buff))
+
+		if restrictedDevices.hasDevice(deviceName) {
+			continue
+		} else if allowedDevices.hasDevice(deviceName) {
+			valid = append(valid, fmt.Sprintf(resolved, i))
+		}
+	}
+	return valid
+}
