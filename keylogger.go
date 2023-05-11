@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"syscall"
@@ -33,7 +32,7 @@ var allowedDevices = devices{"keyboard", "kbd", "keypad", "evdev", "logitech mx 
 func New(devPath string) (*Keylogger, error) {
 	k := &Keylogger{}
 	if !k.IsRoot() {
-		return nil, errors.New("You need to be root to run this program")
+		return nil, errors.New("you need to be root to run this program")
 	}
 	file, err := os.OpenFile(devPath, os.O_RDWR, os.ModeCharDevice)
 	k.file = file
@@ -45,7 +44,7 @@ func FindKeyboardDevice() string {
 	resolved := "/dev/input/event%d"
 
 	for i := 0; i < 255; i++ {
-		buff, err := ioutil.ReadFile(fmt.Sprintf(path, i))
+		buff, err := os.ReadFile(fmt.Sprintf(path, i))
 		if err != nil {
 			continue
 		}
@@ -68,7 +67,7 @@ func FindAllKeyboardDevices() []string {
 	valid := make([]string, 0)
 
 	for i := 0; i < 255; i++ {
-		buff, err := ioutil.ReadFile(fmt.Sprintf(path, i))
+		buff, err := os.ReadFile(fmt.Sprintf(path, i))
 
 		if os.IsNotExist(err) {
 			break
@@ -118,7 +117,7 @@ func (k *Keylogger) Write(direction KeyEvent, key string) error {
 		}
 	}
 	if code == 0 {
-		return fmt.Errorf("Key %s not found", key)
+		return fmt.Errorf("key %s not found", key)
 	}
 	err := k.write(InputEvent{
 		Type:  EvKey,
@@ -131,7 +130,7 @@ func (k *Keylogger) Write(direction KeyEvent, key string) error {
 	return k.syn()
 }
 
-func (k *KeyLogger) WriteOnce(key string) error {
+func (k *Keylogger) WriteOnce(key string) error {
 	key = strings.ToUpper(key)
 	code := uint16(0)
 	for c, k := range keyCodeMap {
